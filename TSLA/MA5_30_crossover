@@ -1,0 +1,38 @@
+//@version=5
+strategy("双均线交叉策略", overlay=true, initial_capital=1000000,default_qty_type=strategy.percent_of_equity, default_qty_value=90)
+// 计算移动均线
+ma5 = ta.sma(close, 5)
+ma30 = ta.sma(close, 30)
+ma225 = ta.sma(close, 225)
+
+// 绘制移动均线
+plot(ma5, color=color.red, title="Fast")
+plot(ma30, color=color.blue, title="Slow")
+plot(ma225, color=color.purple, title="MA225")
+
+// 计算交叉信号
+crossover_buy = ta.crossover(ma5, ma30)
+crossunder_sell = ta.crossunder(ma5, ma30)
+above_ma225 = close > ma225
+under_ma225 = close < ma225
+
+// 记录信号
+var buySignal = false
+var sellSignal = false
+
+// 更新信号状态
+buySignal := crossover_buy
+sellSignal := crossunder_sell
+
+// 设置策略入场和出场条件
+if (buySignal[0] and above_ma225)
+    strategy.entry("Buy", strategy.long)
+
+if (sellSignal[0] or under_ma225)
+    strategy.close("Buy")
+
+// 标记MA5上穿MA30的信号日
+plotshape(series=crossover_buy, title="上穿信号", location=location.belowbar, color=color.green,style=shape.triangleup, size=size.small,text="上穿")
+
+// 标记MA5下穿MA30的信号日
+plotshape(series=crossunder_sell, title="下穿信号", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small,text="下穿")
