@@ -1,0 +1,39 @@
+//@version=5，这策略不如直接去买 BTC
+strategy("Meta-BTC120", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// 输入参数
+maLength = input.int(120, "MA周期 ", minval=1)
+btcSymbol = input.symbol("BINANCE:BTCUSDT", "BTC交易对")
+startDate = input.time(timestamp("2018-02-02"), "开始日期")
+
+// 绘制Meta的价格曲线
+plot(close, "Meta价格", color=color.orange, linewidth=2)
+
+// 获取BTC价格数据
+btcClose = request.security(btcSymbol, timeframe.period, close)
+btcMA = ta.sma(btcClose, maLength)
+
+// 绘制BTC的MA
+plot(btcMA, "BTC MA120", color=color.blue, linewidth=2)
+
+// BTC相对于其MA的位置
+btcAboveMA = btcClose > btcMA
+btcBelowMA = btcClose < btcMA
+
+// 绘制BTC价格相对于MA的位置
+plot(btcAboveMA ? btcClose : na, "BTC价格(高于MA)", color=color.green, style=plot.style_circles)
+plot(btcBelowMA ? btcClose : na, "BTC价格(低于MA)", color=color.red, style=plot.style_circles)
+
+// 交易逻辑
+if btcAboveMA and strategy.position_size <= 0 and time >= startDate
+    strategy.entry("BUY_META", strategy.long, comment="买入")
+
+if btcBelowMA and strategy.position_size > 0
+    strategy.close("BUY_META", comment="卖出")
+
+// 绘制BTC价格和MA的关系状态
+var table infoTable = table.new(position.top_right, 1, 3, bgcolor=color.white, border_width=1)
+if barstate.islast
+    table.cell(infoTable, 0, 0, "BTC价格: " + str.tostring(btcClose, "#.##"), text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 1, "BTC MA120: " + str.tostring(btcMA, "#.##"), text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 2, btcAboveMA ? "BTC高于MA120" : "BTC低于MA120", text_color=btcAboveMA ? color.green : color.red, text_size=size.small)

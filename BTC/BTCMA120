@@ -1,0 +1,37 @@
+//@version=5
+strategy("BTC MA120 均线策略", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// 计算120日移动平均线
+ma120 = ta.sma(close, 120)
+
+// 输入参数
+wearPercentage = input.float(1.0, "磨损比例 (%)", minval=0.0, maxval=10.0, step=0.1)
+startDate = input.time(timestamp("2018-02-02"), "策略开始执行时间")
+
+// 计算磨损阈值
+wearThreshold = ma120 * wearPercentage / 100
+
+// 绘制均线
+plot(ma120, "MA120", color=color.blue, linewidth=2)
+plot(ma120 + wearThreshold, "上界", color=color.green, linewidth=1)
+plot(ma120 - wearThreshold, "下界", color=color.red, linewidth=1)
+
+// 策略逻辑
+// 当价格在120日均线上方加上磨损阈值时全仓买入
+if close > ma120 + wearThreshold and strategy.position_size <= 0 and time >= startDate
+    strategy.entry("BUY", strategy.long, comment="买入")
+
+// 当价格在120日均线下方减去磨损阈值时全仓卖出
+if close < ma120 - wearThreshold and strategy.position_size > 0 and time >= startDate
+    strategy.close("BUY", comment="卖出")
+
+// 标记K线颜色
+barcolor(close > ma120 + wearThreshold ? color.green : close < ma120 - wearThreshold ? color.red : color.gray)
+
+// 显示信息面板
+var table infoTable = table.new(position.top_right, 1, 4, bgcolor=color.white, border_width=1)
+if barstate.islast
+    table.cell(infoTable, 0, 0, "BTC价格: " + str.tostring(close, "#.##"), text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 1, "MA120: " + str.tostring(ma120, "#.##"), text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 2, "磨损阈值: " + str.tostring(wearThreshold, "#.##"), text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 3, close > ma120 + wearThreshold ? "高于上界" : close < ma120 - wearThreshold ? "低于下界" : "中性", text_color=close > ma120 + wearThreshold ? color.green : close < ma120 - wearThreshold ? color.red : color.gray, text_size=size.small)
