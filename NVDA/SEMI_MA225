@@ -1,0 +1,38 @@
+//@version=6
+// 适用于 NVDA 和 ASML
+strategy("225均线突破策略", overlay=true, initial_capital=1000000, default_qty_type=strategy.percent_of_equity, default_qty_value=90)
+
+// 设置突破百分比（默认1%）
+breakout_pct = input.float(1.0, title="突破百分比 (%)", minval=0.0, step=0.1)
+
+// 计算225日均线
+ma225 = ta.sma(close, 225)
+
+// 计算突破阈值
+wearThreshold = ma225 * breakout_pct / 100
+
+// 买入条件：股价上穿 ma225 + 磨损阈值
+buy_condition = ta.crossover(close, ma225 + wearThreshold)
+
+// 卖出条件：股价下穿 ma225 - 磨损阈值
+sell_condition = ta.crossunder(close, ma225 - wearThreshold)
+
+// 执行交易
+if buy_condition
+    strategy.entry("Long", strategy.long)
+
+if sell_condition and strategy.position_size > 0
+    strategy.close("Long")
+
+// 绘制225均线
+plot(ma225, color=color.orange, title="MA225", linewidth=2)
+// 绘制上下边界
+plot(ma225 + wearThreshold, color=color.green, title="上界", linewidth=1)
+plot(ma225 - wearThreshold, color=color.red, title="下界", linewidth=1)
+
+// 标记买卖点
+plotshape(buy_condition, title="买入", location=location.belowbar, 
+          color=color.green, style=shape.triangleup, text="买入")
+plotshape(sell_condition, title="卖出", location=location.abovebar, 
+          color=color.red, style=shape.triangledown, text="卖出")
+
