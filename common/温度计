@@ -1,0 +1,185 @@
+Write an oscillator-type indicator in PineScript.
+
+It synthesizes multiple indicators, including RSI, moving average distance, TSI, Bollinger Bands, and Oscillator Divergence, and generates a composite score ranging from 0 to 100. A lower score indicates higher investment value.
+
+The lower the value, the closer the color is to blue; the higher the value, the closer the color is to red.
+
+Used in conjunction with long-term moving averages, it can roughly gauge the bottoming range of an asset. When the long-term moving average is in an uptrend and this indicator is relatively low, it often presents an excellent opportunity to buy quality assets at a low price.
+
+The usage steps for this indicator are as follows:
+
+1. Set the "Display Long-term Moving Average" option to "Show" and adjust the moving average length according to the asset type. The better the asset, the longer the moving average.
+
+2. Define a bull market as being above the moving average and a bear market as being below it.
+
+3. For a bull market, set the "Display Bull Market Bottoming Area" option to "Show" and establish a standard (default is 25). The chart will highlight areas where the indicator falls below this standard. A lower standard indicates a more cautious approach, with fewer but potentially more accurate opportunities.
+
+4. For a bear market, set the "Display Bear Market Bottoming Area" option to "Show" and establish a standard (default is 15). The chart will highlight areas where the indicator falls below this standard. A lower standard indicates a more cautious approach, with fewer but potentially more accurate opportunities. Note that in a bear market, it is strongly recommended to bottom-fish on the right side, meaning buy after the indicator exits the bottoming area.
+
+5. It is advised not to chase after high prices in areas where the K-line continuously displays red.
+
+1. RSI（相对强弱指标）
+
+  相对强弱指标（RSI）是一个经典的动量指标，用于衡量价格变动的速度和变化。在温度计指标中，RSI的实现采用了非线性转换的方法：
+
+  value_rsi = ta.rsi(close, len)
+  rsiValue = value_rsi < 30 ? value_rsi*value_rsi/100 : value_rsi>70 ? math.sqrt(value_rsi)*10 : value_rsi 
+
+  这个转换的目的是为了增强RSI在极值区域的信号强度：
+  - 当RSI < 30（超卖区域）时，通过平方运算(value_rsi*value_rsi/100)使得较低的RSI值产生更强的信号
+  - 当RSI > 70（超买区域）时，通过开平方运算(math.sqrt(value_rsi)*10)来平滑高位的信号
+  - 在中间区域（30-70）保持原值，保持指标的线性特性
+
+  这种非线性转换使得RSI在极值区域的表现更加敏感，有助于捕捉市场的极端情况，同时在正常波动区间保持了指标的稳定性。在温度计指标中，RSI被赋予了10%的权重，这反映了它作为基础动量指标的重
+  要性，但同时也避免了过度依赖单一指标。
+
+⏺ 2. Williams %R（威廉指标）
+
+  威廉指标（Williams %R）是一个动量指标，用于判断市场是处于超买还是超卖状态。在温度计指标中的实现如下：
+
+  value_wr = ta.wpr(len)+100
+  wrValue = value_wr<20 ? math.pow(value_wr,2)/100 : value_wr>80 ? math.sqrt(value_wr)*10 : value_wr
+
+  这个转换过程非常有趣：
+  - 首先将原始的Williams %R值（通常是-100到0的范围）通过+100转换到0-100的范围
+  - 在低位区域（<20）时，使用平方运算来加强信号
+  - 在高位区域（>80）时，使用开平方乘以10来平滑信号
+  - 中间区域保持原值不变
+
+  这种转换的目的是为了：
+  1. 在极低位时产生更强的买入信号，因为平方运算会让小数变得更小
+  2. 在极高位时通过开平方来降低信号强度，避免过度反应
+  3. 保持中间区域的线性特性，不对正常波动做过度处理
+
+  在温度计指标中，Williams %R被赋予了20%的权重，这是因为它对市场超买超卖状态的判断较为准确，尤其是在趋势转折点的预警方面表现出色。
+
+⏺ 3. CMO（钱德动量摆动指标）
+
+  钱德动量摆动指标（Chande Momentum Oscillator）是一个衡量价格动量的技术指标，在温度计指标中的实现如下：
+
+  value_cmo = (ta.cmo(close,len)+100)/2
+  cmoValue = value_cmo<25 ? math.pow(value_cmo,2)/100 : value_cmo>75 ? math.sqrt(value_cmo)*10 : value_cmo
+
+  CMO的转换过程包含以下特点：
+  - 原始CMO值范围是-100到+100，通过(value+100)/2转换到0-100的范围
+  - 在低位区域（<25）时使用平方运算来加强信号
+  - 在高位区域（>75）时使用开平方乘以10来平滑信号
+  - 中间区域保持原值不变
+
+  这种转换的原理是：
+  1. 标准化处理使得CMO可以与其他指标在相同范围内比较
+  2. 在极端低位时，平方运算能够更好地捕捉市场的超卖状态
+  3. 在高位时通过开平方运算来避免过度乐观的信号
+
+  在温度计指标中，CMO被赋予了10%的权重，这是因为：
+  1. CMO对市场动量的衡量比较激进，容易产生假信号
+  2. 作为对其他动量指标的补充，而不是主导指标
+  3. 它的主要作用是在其他指标已经显示强烈信号时提供确认
+
+⏺ 4. KD（随机指标）
+
+  随机指标（Stochastic）是一个经典的动量指标，用于判断价格在一定周期内的相对位置。在温度计指标中的实现如下：
+
+  value_kd = ta.stoch(close,high,low,len)
+  kdValue = value_kd<20 ? math.pow(value_kd,2)/100 : value_kd>80 ? math.sqrt(value_kd)*10 : value_kd
+
+  KD指标的转换过程与其他指标类似，但其原理和应用有其特殊性：
+  - KD原始值的范围就是0-100，所以不需要像CMO那样进行范围标准化
+  - 在低位区域（<20）使用平方运算来强化超卖信号
+  - 在高位区域（>80）使用开平方乘以10来平滑超买信号
+  - 中间区域保持原值不变
+
+  这种转换的意义在于：
+  1. KD指标本身就是一个相对强弱指标，其值反映了价格在近期波动范围中的位置
+  2. 通过非线性转换，加强了极端区域的信号强度
+  3. 保持中间区域的线性特性，让指标在正常波动范围内保持敏感度
+
+  在温度计指标中，KD被赋予了30%的权重，这是所有指标中最高的，原因是：
+  1. KD指标对市场超买超卖状态的判断较为准确
+  2. 它结合了价格的高低点信息，比单纯的收盘价指标更全面
+  3. 在横盘整理时，KD的表现比其他动量指标更稳定
+
+⏺ 5. TSI（真实强度指数）
+
+  真实强度指数（True Strength Index）是一个双重平滑的动量指标，在温度计指标中的实现如下：
+
+  value_tsi = (ta.tsi(close,math.round(len/2),len)+1)/2*100
+  tsiValue = value_tsi<30 ? math.pow(value_tsi,2)/100 : value_tsi>70 ? math.sqrt(value_tsi)*10 : value_tsi
+
+  TSI的转换过程有其独特之处：
+  - 原始TSI值范围是-1到+1，通过(value+1)/2*100转换到0-100的范围
+  - 在低位区域（<30）使用平方运算来强化超卖信号
+  - 在高位区域（>70）使用开平方乘以10来平滑超买信号
+  - 中间区域保持原值不变
+
+  这种转换的特殊性在于：
+  1. TSI本身就是一个经过双重平滑的指标，对噪音的过滤效果很好
+  2. 通过非线性转换，进一步强化了极端区域的信号
+  3. 在中间区域保持原有特性，不破坏指标的平滑性质
+
+  在温度计指标中，TSI被赋予了20%的权重，原因是：
+  1. TSI的双重平滑特性使其信号相对可靠
+  2. 它能够较好地识别趋势的转折点
+  3. 作为一个动量指标，它的波动相对温和，有助于减少假信号
+
+⏺ 6. ADX（趋向指标）
+
+  平均趋向指标（Average Directional Index）在温度计指标中的使用方式非常特别：
+
+  [_,_,value_adx] = ta.dmi(len,len+4)
+  adxrsi = (ta.rsi(value_adx,14)*math.sign(close - open)+100)/2
+
+  这个实现有几个独特之处：
+  1. 首先获取ADX值（通过DMI指标计算）
+  2. 对ADX值计算14周期的RSI
+  3. 根据当前K线的涨跌方向（close-open的正负）来调整RSI值
+  4. 最后将结果标准化到0-100范围
+
+  这种复杂的转换设计的原因是：
+  1. ADX本身是一个趋势强度指标，不直接显示方向
+  2. 通过RSI处理，可以捕捉ADX的变化趋势
+  3. 结合K线涨跌方向，为指标添加了方向性信息
+  4. 标准化处理使其可以与其他指标集成
+
+  在温度计指标中，ADX被赋予了10%的权重，这是因为：
+  1. 它主要用于确认趋势强度，而不是预测价格方向
+  2. 作为对其他指标的补充，帮助判断当前市场环境
+  3. 较低的权重避免了在震荡市场中产生过多干扰
+
+⏺ 指标整合原理和权重分配
+
+  温度计指标的最终计算公式如下：
+  index_raw = value_rsi*0.1 + value_wr*0.2 + value_cmo*0.1 + value_kd*0.3 + value_tsi*0.2 + adxrsi*0.1
+
+  这个综合指标的设计理念和权重分配原理如下：
+
+  1. 指标选择的多样性：
+  - 包含了不同类型的技术指标（动量指标、趋势指标、震荡指标）
+  - 每个指标都经过特殊的非线性转换，增强了在极值区域的表现
+  - 通过多指标结合，降低了单一指标的假信号风险
+
+  2. 权重分配的考虑：
+  - KD指标（30%）：作为主导指标，因其在判断超买超卖方面的可靠性
+  - WR和TSI（各20%）：作为重要的辅助指标，提供额外的市场视角
+  - RSI、CMO和ADX（各10%）：作为补充指标，在特定市场条件下提供确认信号
+
+  3. 数值调整的必要性：
+  - 统一度量标准：将所有指标转换到0-100的范围
+  - 非线性转换：在极值区域增强信号强度
+  - 平滑处理：在高位使用开平方来避免过度反应
+
+  4. 最终输出的处理：
+  index = ta.ema(index_raw,3)
+  - 对原始综合指标进行3周期的指数平均
+  - 这一步可以减少指标的波动，提供更平滑的信号
+  - 有助于避免虚假的短期信号
+
+  5. 视觉呈现的优化：
+  linecolor = index<30 ? color.from_gradient(index,20,35,color.rgb(0,0,255),color.rgb(0,255,0)) 
+             : index<70 ? color.from_gradient(index,30,70,color.green,color.yellow)
+             : color.from_gradient(index,70,80,color.yellow,color.rgb(255,15,15))
+  - 使用渐变色来直观显示指标的强度
+  - 不同区间使用不同的颜色范围，帮助交易者快速识别市场状态
+
+⏺ 这就是温度计指标的完整分析。通过将多个技术指标进行非线性转换和加权组合，创造出了一个能够全面反映市场状态的综合指标。每个子指标都经过精心的数值调整，以在保持其原有特性的同时，在极端
+  市场条件下提供更强的信号。最终的输出不仅包含了丰富的市场信息，还通过色彩渐变提供了直观的视觉反馈。

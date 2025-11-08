@@ -1,0 +1,45 @@
+//@version=5
+indicator("温度计")
+len = input.int(14,"温度计回溯期数")
+bg = input.bool(true,title = "显示牛市低温区")
+bg2 = input.bool(true,title = "显示熊市低温区")
+cool1 = input.int(25,"牛市低温门槛")
+cool2 = input.int(15,"熊市低温门槛")
+longplot = input.bool(false,title = "显示长均线")
+long = input.int(120,"长均线长度")
+import TradingView/ta/8
+// rsi 处理
+value_rsi = ta.rsi(close, len)
+rsiValue = value_rsi < 30?value_rsi*value_rsi/100:value_rsi>70?math.sqrt(value_rsi)*10:value_rsi 
+//wr 处理
+value_wr = ta.wpr(len)+100
+wrValue = value_wr<20?math.pow(value_wr,2)/100:value_wr>80?math.sqrt(value_wr)*10:value_wr
+// cmo 处理
+value_cmo = (ta.cmo(close,len)+100)/2
+cmoValue = value_cmo<25?math.pow(value_cmo,2)/100:value_cmo>75?math.sqrt(value_cmo)*10:value_cmo
+
+// kd 处理
+value_kd = ta.stoch(close,high,low,len)
+kdValue = value_kd<20?math.pow(value_kd,2)/100:value_kd>80?math.sqrt(value_kd)*10:value_kd
+// roc 处理
+//value_roc = ta.roc(close,14)
+
+value_tsi = (ta.tsi(close,math.round(len/2),len)+1)/2*100
+tsiValue = value_tsi<30?math.pow(value_tsi,2)/100:value_tsi>70?math.sqrt(value_tsi)*10:value_tsi
+
+
+// adx
+[_,_,value_adx] = ta.dmi(len,len+4)
+adxrsi = (ta.rsi(value_adx,14)*math.sign(close - open)+100)/2
+
+//index_raw = rsiValue*0.25 + wrValue * 0.2 + cmoValue *0.1 + kdValue *0.25 + tsiValue*0.2
+index_raw = value_rsi*0.1+value_wr*0.2+value_cmo*0.1+value_kd*0.3+value_tsi*0.2 + adxrsi *0.1
+
+index = ta.ema(index_raw,3)
+linecolor = index<30?color.from_gradient(index,20,35,color.rgb(0,0,255),color.rgb(0,255,0)):index<70?color.from_gradient(index,30,70,color.green,color.yellow):color.from_gradient(index,70,80,color.yellow,color.rgb(255,15,15))
+plot(index,color = linecolor,linewidth = 2)
+plot(ta.sma(close,length = long),color=color.rgb(220,15,15,not longplot?90:0),force_overlay = true)
+// 绘制K线
+bgcolor(not bg?na:close<ta.sma(close,long)?na:index<cool1?color.rgb(15,225,15,40):na,force_overlay = true)
+bgcolor(not bg2?na:close>ta.sma(close,long)?na:index<cool2?color.rgb(225,15,15,40):na,force_overlay = true)
+barcolor(linecolor, offset=0)
